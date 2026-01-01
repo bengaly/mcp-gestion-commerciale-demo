@@ -114,6 +114,28 @@ curl -u support:support123 http://localhost:8080/api/chat/test/customer-summary/
 curl -u manager:manager123 http://localhost:8080/api/chat/capabilities
 ```
 
+### Tester via l'interface web (IHM)
+
+Une application Angular est disponible pour tester les capacités MCP via une interface utilisateur moderne.
+
+```bash
+cd mcp-frontend
+npm install
+npm start
+```
+
+L'application sera accessible sur `http://localhost:4200/`.
+
+**Fonctionnalités disponibles :**
+- **Dashboard** - Vue d'ensemble avec capacités MCP disponibles selon le rôle
+- **Commandes** - Recherche de commandes via MCP
+- **Factures** - Analyse de factures via MCP
+- **Clients** - Résumé d'activité client via MCP
+- **Produits** - Gestion du catalogue produits
+- **Assistant IA** - Chat avec l'IA pour interagir en langage naturel
+
+👉 **[Documentation complète du frontend](mcp-frontend/README.md)**
+
 ### Tester via LLM (OpenAI / Spring AI)
 
 L'endpoint `POST /api/chat/llm/message` envoie le message au LLM (via Spring AI) et autorise l'appel des tools MCP selon le rôle courant.
@@ -124,7 +146,7 @@ Sous PowerShell, utilisez `curl.exe` (car `curl` est un alias de `Invoke-WebRequ
 
 ```bash
 # 1) Premier message (le serveur renvoie un conversationId)
-curl.exe -u manager:manager123 -H "Content-Type: application/json" -d "{\"message\":\"Crée une commande pour CLI-001 avec 2 articles (P-001 x2, P-002 x1)\"}" http://localhost:8080/api/chat/llm/message
+curl.exe -u manager:manager123 -H "Content-Type: application/json" -d "{\"message\":\"Crée une commande pour CLI-001 avec 2 PROD-001\"}" http://localhost:8080/api/chat/llm/message
 
 # 2) Confirmer (réutiliser le conversationId reçu à l'étape 1)
 curl.exe -u manager:manager123 -H "Content-Type: application/json" -d "{\"message\":\"Oui je confirme\",\"conversationId\":\"<COLLER_ICI>\"}" http://localhost:8080/api/chat/llm/message
