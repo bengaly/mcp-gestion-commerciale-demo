@@ -274,7 +274,15 @@ public class OrderService {
     private BigDecimal calculateEstimatedTotal(CreateOrderRequest request) {
         return request.getLines().stream()
             .map(line -> {
-                BigDecimal subtotal = line.getUnitPrice().multiply(new BigDecimal(line.getQuantity()));
+                // Récupérer le prix du produit si non fourni
+                BigDecimal unitPrice = line.getUnitPrice();
+                if (unitPrice == null) {
+                    unitPrice = productRepository.findByProductCode(line.getProductCode())
+                        .map(Product::getUnitPrice)
+                        .orElse(BigDecimal.ZERO);
+                }
+                int quantity = line.getQuantity() != null ? line.getQuantity() : 1;
+                BigDecimal subtotal = unitPrice.multiply(new BigDecimal(quantity));
                 if (line.getDiscountPercent() != null) {
                     BigDecimal discount = subtotal.multiply(line.getDiscountPercent()).divide(new BigDecimal("100"));
                     subtotal = subtotal.subtract(discount);
