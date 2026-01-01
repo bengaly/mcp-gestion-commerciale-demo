@@ -3,8 +3,10 @@ package com.enterprise.mcp.service;
 import com.enterprise.mcp.domain.entity.Customer;
 import com.enterprise.mcp.domain.entity.Order;
 import com.enterprise.mcp.domain.entity.OrderLine;
+import com.enterprise.mcp.domain.entity.Product;
 import com.enterprise.mcp.domain.repository.CustomerRepository;
 import com.enterprise.mcp.domain.repository.OrderRepository;
+import com.enterprise.mcp.domain.repository.ProductRepository;
 import com.enterprise.mcp.service.dto.CreateOrderRequest;
 import com.enterprise.mcp.service.dto.OrderValidationResult;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
     private final CustomerService customerService;
+    private final ProductRepository productRepository;
     
     /**
      * Recherche une commande par son numéro
@@ -118,13 +121,21 @@ public class OrderService {
                 errors.add("Dépassement de la limite de crédit du client");
             }
             
-            // Vérification des quantités
+            // Vérification des produits et quantités
             for (var line : request.getLines()) {
-                if (line.getQuantity() <= 0) {
+                if (line.getQuantity() == null || line.getQuantity() <= 0) {
                     errors.add("Quantité invalide pour le produit: " + line.getProductCode());
                 }
-                if (line.getUnitPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                    errors.add("Prix unitaire invalide pour le produit: " + line.getProductCode());
+                
+                // Vérification que le produit existe
+                Optional<Product> productOpt = productRepository.findByProductCode(line.getProductCode());
+                if (productOpt.isEmpty()) {
+                    errors.add("Produit non trouvé: " + line.getProductCode());
+                } else {
+                    Product product = productOpt.get();
+                    if (product.getStatus() != Product.ProductStatus.ACTIVE) {
+                        errors.add("Produit non disponible: " + line.getProductCode());
+                    }
                 }
             }
             
@@ -181,13 +192,16 @@ public class OrderService {
             .createdBy(createdBy)
             .build();
         
-        // Ajout des lignes
+        // Ajout des lignes avec récupération des infos produit
         for (var lineRequest : request.getLines()) {
+            Product product = productRepository.findByProductCode(lineRequest.getProductCode())
+                .orElseThrow(() -> new IllegalArgumentException("Produit non trouvé: " + lineRequest.getProductCode()));
+            
             OrderLine line = OrderLine.builder()
-                .productCode(lineRequest.getProductCode())
-                .productName(lineRequest.getProductName())
+                .productCode(product.getProductCode())
+                .productName(product.getName())
                 .quantity(lineRequest.getQuantity())
-                .unitPrice(lineRequest.getUnitPrice())
+                .unitPrice(lineRequest.getUnitPrice() != null ? lineRequest.getUnitPrice() : product.getUnitPrice())
                 .discountPercent(lineRequest.getDiscountPercent())
                 .notes(lineRequest.getNotes())
                 .build();

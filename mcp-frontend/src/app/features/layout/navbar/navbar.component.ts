@@ -48,6 +48,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <mat-icon>people</mat-icon>
           Clients
         </a>
+        <a mat-button routerLink="/products" routerLinkActive="active">
+          <mat-icon>inventory_2</mat-icon>
+          Produits
+        </a>
         <a mat-button routerLink="/chat" routerLinkActive="active" class="chat-btn">
           <mat-icon>smart_toy</mat-icon>
           Assistant IA

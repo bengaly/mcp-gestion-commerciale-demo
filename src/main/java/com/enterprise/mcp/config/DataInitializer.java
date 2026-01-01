@@ -4,6 +4,7 @@ import com.enterprise.mcp.domain.entity.*;
 import com.enterprise.mcp.domain.repository.CustomerRepository;
 import com.enterprise.mcp.domain.repository.InvoiceRepository;
 import com.enterprise.mcp.domain.repository.OrderRepository;
+import com.enterprise.mcp.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -28,11 +29,15 @@ public class DataInitializer implements CommandLineRunner {
     private final CustomerRepository customerRepository;
     private final OrderRepository orderRepository;
     private final InvoiceRepository invoiceRepository;
+    private final ProductRepository productRepository;
     
     @Override
     @Transactional
     public void run(String... args) {
         log.info("Initialisation des données de démonstration...");
+        
+        // Création des produits
+        createProducts();
         
         // Création des clients
         Customer techCorp = createCustomer("CLI-001", "TechCorp Solutions", "Jean Dupont", 
@@ -105,9 +110,66 @@ public class DataInitializer implements CommandLineRunner {
         invoiceRepository.save(inv4);
         
         log.info("Données de démonstration initialisées avec succès!");
+        log.info("- {} produits créés", productRepository.count());
         log.info("- {} clients créés", customerRepository.count());
         log.info("- {} commandes créées", orderRepository.count());
         log.info("- {} factures créées", invoiceRepository.count());
+    }
+    
+    private void createProducts() {
+        // Logiciels
+        createProduct("PROD-001", "Licence Logiciel Enterprise", "Licence annuelle du logiciel Enterprise Edition",
+            Product.ProductCategory.SOFTWARE, new BigDecimal("2500.00"), 100, "licence");
+        createProduct("PROD-007", "Licence Logiciel Standard", "Licence annuelle du logiciel Standard Edition",
+            Product.ProductCategory.SOFTWARE, new BigDecimal("1200.00"), 200, "licence");
+        
+        // Services
+        createProduct("PROD-002", "Support Premium 1 an", "Contrat de support premium avec SLA garanti",
+            Product.ProductCategory.SERVICE, new BigDecimal("5000.00"), null, "contrat");
+        createProduct("PROD-003", "Formation Expert", "Formation avancée de 2 jours sur site",
+            Product.ProductCategory.SERVICE, new BigDecimal("1500.00"), null, "session");
+        createProduct("PROD-006", "Déploiement sur site", "Installation et configuration sur site client",
+            Product.ProductCategory.SERVICE, new BigDecimal("15000.00"), null, "prestation");
+        
+        // Modules et extensions
+        createProduct("PROD-004", "Module Analytics", "Module d'analyse avancée et reporting",
+            Product.ProductCategory.SUBSCRIPTION, new BigDecimal("3500.00"), 50, "module");
+        createProduct("PROD-005", "Intégration API", "Pack d'intégration API REST complète",
+            Product.ProductCategory.SUBSCRIPTION, new BigDecimal("2000.00"), 50, "pack");
+        
+        // Hardware
+        createProduct("P-LAPTOP-001", "Laptop Pro 15", "Ordinateur portable professionnel 15 pouces",
+            Product.ProductCategory.HARDWARE, new BigDecimal("1299.00"), 25, "unité");
+        createProduct("P-LAPTOP-002", "Laptop Ultra 14", "Ordinateur portable ultraléger 14 pouces",
+            Product.ProductCategory.HARDWARE, new BigDecimal("1599.00"), 15, "unité");
+        createProduct("P-DESKTOP-001", "Workstation Pro", "Station de travail haute performance",
+            Product.ProductCategory.HARDWARE, new BigDecimal("2499.00"), 10, "unité");
+        
+        // Accessoires
+        createProduct("P-MOUSE-001", "Souris Ergonomique", "Souris sans fil ergonomique",
+            Product.ProductCategory.ACCESSORY, new BigDecimal("79.00"), 100, "unité");
+        createProduct("P-KEYBOARD-001", "Clavier Mécanique", "Clavier mécanique rétroéclairé",
+            Product.ProductCategory.ACCESSORY, new BigDecimal("149.00"), 75, "unité");
+        createProduct("P-MONITOR-001", "Écran 27 4K", "Moniteur 27 pouces 4K UHD",
+            Product.ProductCategory.ACCESSORY, new BigDecimal("549.00"), 30, "unité");
+        createProduct("P-DOCK-001", "Station d'accueil USB-C", "Station d'accueil universelle USB-C",
+            Product.ProductCategory.ACCESSORY, new BigDecimal("199.00"), 40, "unité");
+    }
+    
+    private void createProduct(String code, String name, String description,
+                               Product.ProductCategory category, BigDecimal price, 
+                               Integer stock, String unit) {
+        Product product = Product.builder()
+            .productCode(code)
+            .name(name)
+            .description(description)
+            .category(category)
+            .unitPrice(price)
+            .stockQuantity(stock)
+            .status(Product.ProductStatus.ACTIVE)
+            .unit(unit)
+            .build();
+        productRepository.save(product);
     }
     
     private Customer createCustomer(String code, String company, String contact, String email, 
