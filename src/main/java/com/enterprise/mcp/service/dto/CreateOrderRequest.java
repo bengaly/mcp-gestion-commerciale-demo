@@ -41,6 +41,8 @@ public class CreateOrderRequest {
     
     /**
      * DTO pour une ligne de commande
+     * Seul le code produit et la quantité sont obligatoires.
+     * Le nom et le prix sont récupérés automatiquement depuis la base de données.
      */
     @Data
     @Builder
@@ -51,10 +53,10 @@ public class CreateOrderRequest {
         @NotBlank(message = "Le code produit est obligatoire")
         private String productCode;
         
-        @NotBlank(message = "Le nom du produit est obligatoire")
         private String productName;
         
-        private Integer quantity;
+        @Builder.Default
+        private Integer quantity = 1;
         
         private BigDecimal unitPrice;
         

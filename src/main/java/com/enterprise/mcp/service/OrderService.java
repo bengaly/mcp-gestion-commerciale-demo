@@ -111,23 +111,16 @@ public class OrderService {
         if (request.getLines() == null || request.getLines().isEmpty()) {
             errors.add("La commande doit contenir au moins une ligne");
         } else {
-            // Calcul du montant total estimé
-            BigDecimal estimatedTotal = request.getLines().stream()
-                .map(line -> line.getUnitPrice().multiply(new BigDecimal(line.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-            // Vérification de la limite de crédit
-            if (!customerService.canPlaceOrder(request.getCustomerCode(), estimatedTotal)) {
-                errors.add("Dépassement de la limite de crédit du client");
-            }
+            BigDecimal estimatedTotal = BigDecimal.ZERO;
             
             // Vérification des produits et quantités
             for (var line : request.getLines()) {
-                if (line.getQuantity() == null || line.getQuantity() <= 0) {
+                int quantity = line.getQuantity() != null ? line.getQuantity() : 1;
+                if (quantity <= 0) {
                     errors.add("Quantité invalide pour le produit: " + line.getProductCode());
                 }
                 
-                // Vérification que le produit existe
+                // Vérification que le produit existe et récupération du prix
                 Optional<Product> productOpt = productRepository.findByProductCode(line.getProductCode());
                 if (productOpt.isEmpty()) {
                     errors.add("Produit non trouvé: " + line.getProductCode());
@@ -136,7 +129,15 @@ public class OrderService {
                     if (product.getStatus() != Product.ProductStatus.ACTIVE) {
                         errors.add("Produit non disponible: " + line.getProductCode());
                     }
+                    // Utiliser le prix fourni ou le prix du produit
+                    BigDecimal unitPrice = line.getUnitPrice() != null ? line.getUnitPrice() : product.getUnitPrice();
+                    estimatedTotal = estimatedTotal.add(unitPrice.multiply(new BigDecimal(quantity)));
                 }
+            }
+            
+            // Vérification de la limite de crédit
+            if (!customerService.canPlaceOrder(request.getCustomerCode(), estimatedTotal)) {
+                errors.add("Dépassement de la limite de crédit du client");
             }
             
             // Avertissement pour commandes importantes
@@ -200,7 +201,7 @@ public class OrderService {
             OrderLine line = OrderLine.builder()
                 .productCode(product.getProductCode())
                 .productName(product.getName())
-                .quantity(lineRequest.getQuantity())
+                .quantity(lineRequest.getQuantity() != null ? lineRequest.getQuantity() : 1)
                 .unitPrice(lineRequest.getUnitPrice() != null ? lineRequest.getUnitPrice() : product.getUnitPrice())
                 .discountPercent(lineRequest.getDiscountPercent())
                 .notes(lineRequest.getNotes())

@@ -2,11 +2,13 @@ package com.enterprise.mcp.mcp;
 
 import com.enterprise.mcp.audit.McpAuditService;
 import com.enterprise.mcp.domain.entity.Order;
+import com.enterprise.mcp.domain.entity.Product;
 import com.enterprise.mcp.security.McpCapability;
 import com.enterprise.mcp.security.McpSecurityContext;
 import com.enterprise.mcp.service.CustomerService;
 import com.enterprise.mcp.service.InvoiceService;
 import com.enterprise.mcp.service.OrderService;
+import com.enterprise.mcp.service.ProductService;
 import com.enterprise.mcp.service.dto.CreateOrderRequest;
 import com.enterprise.mcp.service.dto.CustomerActivitySummary;
 import com.enterprise.mcp.service.dto.InvoiceAnalysis;
@@ -37,6 +39,7 @@ public class McpCapabilityHandler {
     private final OrderService orderService;
     private final InvoiceService invoiceService;
     private final CustomerService customerService;
+    private final ProductService productService;
     private final McpAuditService auditService;
     private final McpSecurityContext securityContext;
     
@@ -186,9 +189,9 @@ public class McpCapabilityHandler {
                 return McpResponse.validationFailed(validation.toExplanation());
             }
             
-            // Si non confirmé, demander confirmation
+            // Si non confirmé, demander confirmation avec détails produits enrichis
             if (!confirmed) {
-                String confirmationSummary = request.toConfirmationSummary();
+                String confirmationSummary = generateEnrichedConfirmationSummary(request);
                 auditService.logConfirmationRequired(correlationId, capability, confirmationSummary);
                 
                 return McpResponse.requiresConfirmation(
@@ -262,6 +265,57 @@ public class McpCapabilityHandler {
         }
         
         sb.append("\n**Adresse de livraison:** ").append(order.getShippingAddress()).append("\n");
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Génère un résumé de confirmation enrichi avec les détails des produits
+     * récupérés depuis la base de données
+     */
+    private String generateEnrichedConfirmationSummary(CreateOrderRequest request) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Confirmation de commande ===\n\n");
+        sb.append("**Client:** ").append(request.getCustomerCode()).append("\n");
+        
+        if (request.getShippingAddress() != null) {
+            sb.append("**Adresse de livraison:** ").append(request.getShippingAddress()).append("\n");
+        }
+        
+        sb.append("\n**Articles:**\n");
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+        
+        for (CreateOrderRequest.OrderLineRequest line : request.getLines()) {
+            // Récupérer les infos produit depuis la base
+            Product product = productService.findByProductCode(line.getProductCode()).orElse(null);
+            
+            String productName = product != null ? product.getName() : line.getProductCode();
+            java.math.BigDecimal unitPrice = line.getUnitPrice() != null ? line.getUnitPrice() 
+                : (product != null ? product.getUnitPrice() : java.math.BigDecimal.ZERO);
+            int quantity = line.getQuantity() != null ? line.getQuantity() : 1;
+            
+            java.math.BigDecimal lineTotal = unitPrice.multiply(new java.math.BigDecimal(quantity));
+            if (line.getDiscountPercent() != null && line.getDiscountPercent().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                java.math.BigDecimal discount = lineTotal.multiply(line.getDiscountPercent()).divide(new java.math.BigDecimal("100"));
+                lineTotal = lineTotal.subtract(discount);
+            }
+            total = total.add(lineTotal);
+            
+            sb.append("- **").append(productName).append("** (")
+              .append(line.getProductCode()).append(")")
+              .append(" x ").append(quantity)
+              .append(" @ ").append(String.format("%,.2f €", unitPrice))
+              .append(" = ").append(String.format("%,.2f €", lineTotal))
+              .append("\n");
+        }
+        
+        sb.append("\n**Total HT:** ").append(String.format("%,.2f €", total));
+        sb.append("\n**TVA (20%):** ").append(String.format("%,.2f €", total.multiply(new java.math.BigDecimal("0.20"))));
+        sb.append("\n**Total TTC:** ").append(String.format("%,.2f €", total.multiply(new java.math.BigDecimal("1.20"))));
+        
+        if (request.getNotes() != null && !request.getNotes().isBlank()) {
+            sb.append("\n\n**Notes:** ").append(request.getNotes());
+        }
         
         return sb.toString();
     }

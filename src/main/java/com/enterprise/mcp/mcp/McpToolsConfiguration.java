@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.function.Function;
 
@@ -92,7 +91,7 @@ public class McpToolsConfiguration {
      * ATTENTION : Cet outil nécessite une confirmation utilisateur.
      */
     @Bean
-    @Description("Crée une nouvelle commande pour un client. Nécessite le code client, les lignes de commande avec produits et quantités. Demande confirmation avant création effective.")
+    @Description("Crée une nouvelle commande pour un client. Nécessite le code client et les lignes de commande (code produit et quantité uniquement - les détails produit sont récupérés automatiquement). Demande confirmation avant création effective.")
     public Function<CreateOrderToolRequest, String> createOrder() {
         return request -> {
             log.info("Tool createOrder appelé pour client: {}", request.customerCode());
@@ -107,15 +106,13 @@ public class McpToolsConfiguration {
     
     /**
      * Convertit une requête tool en requête service
+     * Les détails produit (nom, prix) seront récupérés par le service depuis la base de données
      */
     private CreateOrderRequest convertToServiceRequest(CreateOrderToolRequest toolRequest) {
         List<CreateOrderRequest.OrderLineRequest> lines = toolRequest.lines().stream()
             .map(line -> CreateOrderRequest.OrderLineRequest.builder()
                 .productCode(line.productCode())
-                .productName(line.productName())
                 .quantity(line.quantity())
-                .unitPrice(line.unitPrice())
-                .discountPercent(line.discountPercent())
                 .build())
             .toList();
         
@@ -170,18 +167,12 @@ public class McpToolsConfiguration {
     ) {}
     
     /**
-     * Ligne de commande
-     * @param productCode Code produit
-     * @param productName Nom du produit
+     * Ligne de commande simplifiée
+     * @param productCode Code produit (ex: PROD-001, P-LAPTOP-001)
      * @param quantity Quantité commandée
-     * @param unitPrice Prix unitaire HT
-     * @param discountPercent Pourcentage de remise (optionnel)
      */
     public record OrderLineToolRequest(
         String productCode,
-        String productName,
-        Integer quantity,
-        BigDecimal unitPrice,
-        BigDecimal discountPercent
+        Integer quantity
     ) {}
 }
